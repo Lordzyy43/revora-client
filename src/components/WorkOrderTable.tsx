@@ -1,13 +1,23 @@
 import { MoreHorizontal } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { StatusBadge } from './StatusBadge'
 import type { WorkOrder } from '../types'
 
 type Props = {
   orders: WorkOrder[]
   compact?: boolean
+  detailBasePath?: string
+  onSelect?: (order: WorkOrder) => void
+  selectedOrderId?: string
 }
 
-export function WorkOrderTable({ orders, compact = false }: Props) {
+export function WorkOrderTable({
+  compact = false,
+  detailBasePath,
+  onSelect,
+  orders,
+  selectedOrderId,
+}: Props) {
   return (
     <div className="table-shell">
       <table className={compact ? 'compact-table' : undefined}>
@@ -27,7 +37,11 @@ export function WorkOrderTable({ orders, compact = false }: Props) {
         </thead>
         <tbody>
           {orders.map((order) => (
-            <tr key={order.id}>
+            <tr
+              className={selectedOrderId === order.id ? 'selected-row' : undefined}
+              key={order.id}
+              onClick={() => onSelect?.(order)}
+            >
               <td>
                 <strong>{order.id}</strong>
                 <small>{order.plate}</small>
@@ -45,9 +59,20 @@ export function WorkOrderTable({ orders, compact = false }: Props) {
               <td>{order.due}</td>
               <td>{order.updated}</td>
               <td>
-                <button className="icon-button" type="button" aria-label={`Open ${order.id}`}>
-                  <MoreHorizontal size={16} />
-                </button>
+                {detailBasePath ? (
+                  <Link
+                    className="icon-button"
+                    onClick={(event) => event.stopPropagation()}
+                    to={`${detailBasePath}/${order.serviceOrderId}`}
+                    aria-label={`Open ${order.id}`}
+                  >
+                    <MoreHorizontal size={16} />
+                  </Link>
+                ) : (
+                  <button className="icon-button" type="button" aria-label={`Open ${order.id}`}>
+                    <MoreHorizontal size={16} />
+                  </button>
+                )}
               </td>
             </tr>
           ))}

@@ -11,7 +11,7 @@ export type ApiServiceOrderStatus =
   | 'cancelled'
 
 export const serviceOrderStatusLabel: Record<ApiServiceOrderStatus, ServiceStatus> = {
-  vehicle_received: 'Checked In',
+  vehicle_received: 'Vehicle Received',
   inspection: 'Inspection',
   waiting_approval: 'Waiting Approval',
   approved: 'Estimate Approved',

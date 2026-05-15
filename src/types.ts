@@ -4,9 +4,8 @@ export type Role = 'customer' | 'admin' | 'mechanic' | 'owner'
 
 export type ServiceStatus =
   | 'Booked'
-  | 'Checked In'
+  | 'Vehicle Received'
   | 'Inspection'
-  | 'Diagnosis'
   | 'Waiting Approval'
   | 'Estimate Approved'
   | 'In Progress'
@@ -36,6 +35,14 @@ export type WorkOrder = {
   due: string
   updated: string
   rawStatus?: string
+  approvalStatus?: string
+  allowedActions?: Record<string, boolean>
+  allowedTransitions?: string[]
+  notes?: {
+    inspection_note?: string | null
+    diagnosis_note?: string | null
+    recommendation_note?: string | null
+  }
 }
 
 export type Stat = {

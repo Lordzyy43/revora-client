@@ -1,4 +1,6 @@
 import { Camera, CheckCircle2, Play, Send, Wrench } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AsyncState } from '../components/AsyncState'
 import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
@@ -8,8 +10,9 @@ import { useMechanicServiceOrders, useUpdateMechanicStatus } from '../hooks/useS
 
 export function MechanicWorkspace() {
   const serviceOrdersQuery = useMechanicServiceOrders()
-  const jobs = serviceOrdersQuery.data ?? []
-  const currentJob = jobs[0]
+  const jobs = useMemo(() => serviceOrdersQuery.data ?? [], [serviceOrdersQuery.data])
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const currentJob = jobs.find((job) => job.id === selectedJobId) ?? jobs[0]
   const updateStatusMutation = useUpdateMechanicStatus(currentJob?.serviceOrderId ?? '')
 
   return (
@@ -30,7 +33,11 @@ export function MechanicWorkspace() {
           <AsyncState message="Assigned service orders will appear here." title="No assigned jobs" />
         ) : null}
         {jobs.map((job) => (
-          <article className="job-card" key={job.id}>
+          <article
+            className={`job-card ${currentJob?.id === job.id ? 'selected-card' : ''}`}
+            key={job.id}
+            onClick={() => setSelectedJobId(job.id)}
+          >
             <div>
               <strong>{job.id}</strong>
               <StatusBadge>{job.status}</StatusBadge>
@@ -61,9 +68,18 @@ export function MechanicWorkspace() {
             </div>
             <ServiceTimeline current={currentJob.status} />
             <div className="action-grid">
-              <button
+              <Link
                 className="button button-primary"
-                disabled={updateStatusMutation.isPending}
+                to={`/mechanic/service-orders/${currentJob.serviceOrderId}`}
+              >
+                Open Detail
+              </Link>
+              <button
+                className="button button-secondary"
+                disabled={
+                  updateStatusMutation.isPending ||
+                  !currentJob.allowedTransitions?.includes('in_progress')
+                }
                 onClick={() =>
                   updateStatusMutation.mutate({
                     status: 'in_progress',
@@ -77,7 +93,10 @@ export function MechanicWorkspace() {
               </button>
               <button
                 className="button button-secondary"
-                disabled={updateStatusMutation.isPending}
+                disabled={
+                  updateStatusMutation.isPending ||
+                  !currentJob.allowedTransitions?.includes('quality_check')
+                }
                 onClick={() =>
                   updateStatusMutation.mutate({
                     status: 'quality_check',
@@ -89,15 +108,23 @@ export function MechanicWorkspace() {
                 <Send size={16} />
                 Send to QC
               </button>
-              <button className="button button-secondary" type="button">
+              <Link
+                className="button button-secondary"
+                to={`/mechanic/service-orders/${currentJob.serviceOrderId}`}
+              >
                 <Camera size={16} />
-                Add Evidence
-              </button>
-              <button className="button button-secondary" type="button">
+                Evidence
+              </Link>
+              <Link
+                className="button button-secondary"
+                to={`/mechanic/service-orders/${currentJob.serviceOrderId}`}
+              >
                 <Wrench size={16} />
                 Update Notes
-              </button>
+              </Link>
             </div>
+            {updateStatusMutation.isSuccess ? <p className="form-success">Job status updated.</p> : null}
+            {updateStatusMutation.isError ? <p className="form-error">Job status could not be updated.</p> : null}
             <div className="checklist">
               {['Inspection', 'In Progress', 'Quality Check', 'Completed'].map((task) => (
                 <div className="check-row" key={task}>
@@ -139,9 +166,8 @@ export function MechanicWorkspace() {
 function progressFromStatus(status: string) {
   const progress: Record<string, number> = {
     Booked: 8,
-    'Checked In': 18,
+    'Vehicle Received': 18,
     Inspection: 32,
-    Diagnosis: 44,
     'Waiting Approval': 52,
     'Estimate Approved': 60,
     'In Progress': 68,

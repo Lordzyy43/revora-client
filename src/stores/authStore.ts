@@ -6,6 +6,7 @@ export type AuthUser = {
   id: number
   name: string
   email: string
+  phone?: string
   role?: Role | string | { name?: string; slug?: string; title?: string }
   role_name?: string
   roleName?: string

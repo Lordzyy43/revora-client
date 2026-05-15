@@ -1,4 +1,6 @@
 import { Send, UserPlus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AsyncState } from '../components/AsyncState'
 import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
@@ -9,8 +11,17 @@ import { useAdminServiceOrders } from '../hooks/useServiceOrders'
 
 export function AdminWorkOrders() {
   const serviceOrdersQuery = useAdminServiceOrders()
-  const orders = serviceOrdersQuery.data ?? []
-  const selected = orders[0]
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const filteredOrders = useMemo(() => {
+    const orders = serviceOrdersQuery.data ?? []
+
+    if (statusFilter === 'all') return orders
+    if (statusFilter === 'unassigned') return orders.filter((order) => order.mechanic === 'Unassigned')
+
+    return orders.filter((order) => order.status === statusFilter)
+  }, [serviceOrdersQuery.data, statusFilter])
+  const selected = filteredOrders.find((order) => order.id === selectedOrderId) ?? filteredOrders[0]
 
   return (
     <MotionPage className="split-workspace">
@@ -22,8 +33,13 @@ export function AdminWorkOrders() {
           </div>
         </div>
         <div className="filter-row">
-          {['Status', 'Priority', 'Mechanic', 'Date', 'Customer', 'Vehicle'].map((filter) => (
-            <button className="filter-pill" type="button" key={filter}>
+          {['all', 'Vehicle Received', 'Inspection', 'Waiting Approval', 'In Progress', 'Quality Check', 'Completed', 'unassigned'].map((filter) => (
+            <button
+              className={`filter-pill ${statusFilter === filter ? 'active' : ''}`}
+              onClick={() => setStatusFilter(filter)}
+              type="button"
+              key={filter}
+            >
               {filter}
             </button>
           ))}
@@ -38,13 +54,20 @@ export function AdminWorkOrders() {
             variant="error"
           />
         ) : null}
-        {!serviceOrdersQuery.isLoading && !serviceOrdersQuery.isError && orders.length === 0 ? (
+        {!serviceOrdersQuery.isLoading && !serviceOrdersQuery.isError && filteredOrders.length === 0 ? (
           <AsyncState
             message="Create a service order from a confirmed booking to populate this table."
             title="No service orders found"
           />
         ) : null}
-        {orders.length > 0 ? <WorkOrderTable orders={orders} /> : null}
+        {filteredOrders.length > 0 ? (
+          <WorkOrderTable
+            detailBasePath="/admin/service-orders"
+            onSelect={(order) => setSelectedOrderId(order.id)}
+            orders={filteredOrders}
+            selectedOrderId={selected?.id}
+          />
+        ) : null}
       </section>
 
       <aside className="detail-panel">
@@ -60,17 +83,31 @@ export function AdminWorkOrders() {
             <StatusBadge>{selected.status}</StatusBadge>
             <ServiceTimeline current={selected.status} />
             <div className="button-row vertical">
-              <button className="button button-primary" type="button">
+              <Link className="button button-primary" to={`/admin/service-orders/${selected.serviceOrderId}`}>
+                Open Detail
+              </Link>
+              <Link className="button button-primary" to={`/admin/service-orders/${selected.serviceOrderId}`}>
                 <UserPlus size={16} />
                 Assign Mechanic
-              </button>
-              <button className="button button-secondary" type="button">
+              </Link>
+              <Link
+                className="button button-secondary"
+                to={`/admin/service-orders/${selected.serviceOrderId}`}
+                aria-disabled={!selected.allowedActions?.can_edit_estimate}
+              >
                 <Send size={16} />
                 Request Approval
-              </button>
-              <button className="button button-secondary" type="button">
-                Generate Invoice
-              </button>
+              </Link>
+              <Link
+                className="button button-secondary"
+                to={`/admin/service-orders/${selected.serviceOrderId}`}
+                aria-disabled={!selected.allowedActions?.can_move_to_in_progress}
+              >
+                Move to In Progress
+              </Link>
+              {selected.allowedTransitions?.length ? (
+                <p>Allowed transitions: {selected.allowedTransitions.join(', ')}</p>
+              ) : null}
             </div>
           </>
         ) : (

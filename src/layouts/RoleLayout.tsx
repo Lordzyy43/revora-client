@@ -26,8 +26,10 @@ export function RoleLayout({ role, title, subtitle }: Props) {
   const storedUser = useAuthStore((state) => state.user)
   const currentUserQuery = useCurrentUser()
   const user = currentUserQuery.data ?? storedUser
-  const header = routeHeaders[pathname] ?? { title, subtitle }
-  const activeNav = roleNav[role].find((item) => item.path === pathname)?.label
+  const header = getRouteHeader(pathname) ?? { title, subtitle }
+  const activeNav = [...roleNav[role]]
+    .sort((first, second) => second.path.length - first.path.length)
+    .find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))?.label
 
   return (
     <div className={`app-shell role-${role}`}>
@@ -94,6 +96,10 @@ const routeHeaders: Record<string, { title: string; subtitle: string }> = {
     title: 'Service Tracking',
     subtitle: 'Follow the full vehicle journey from check-in to completion.',
   },
+  '/customer/bookings': {
+    title: 'Customer Bookings',
+    subtitle: 'Create reservations, review schedules, and open booking details.',
+  },
   '/admin': {
     title: 'Operations Hub',
     subtitle: 'Control service flow, assignments, approvals, and handoffs.',
@@ -101,6 +107,10 @@ const routeHeaders: Record<string, { title: string; subtitle: string }> = {
   '/admin/work-orders': {
     title: 'Service Order Management',
     subtitle: 'Track, assign, approve, invoice, and close service orders.',
+  },
+  '/admin/bookings': {
+    title: 'Booking Operations',
+    subtitle: 'Confirm bookings and create service orders.',
   },
   '/mechanic': {
     title: 'Mechanic Workspace',
@@ -114,4 +124,36 @@ const routeHeaders: Record<string, { title: string; subtitle: string }> = {
     title: 'Component Library',
     subtitle: 'Reusable Revora interface patterns for implementation.',
   },
+}
+
+function getRouteHeader(pathname: string) {
+  if (pathname.startsWith('/customer/bookings/')) {
+    return {
+      title: 'Booking Detail',
+      subtitle: 'Review booking status, services, logs, and cancellation eligibility.',
+    }
+  }
+
+  if (pathname.startsWith('/customer/service-orders/')) {
+    return {
+      title: 'Service Tracking',
+      subtitle: 'Review inspection, estimate, approval, and workshop timeline.',
+    }
+  }
+
+  if (pathname.startsWith('/admin/service-orders/')) {
+    return {
+      title: 'Service Order Detail',
+      subtitle: 'Assign mechanic, update notes, manage inspection, estimates, and status.',
+    }
+  }
+
+  if (pathname.startsWith('/mechanic/service-orders/')) {
+    return {
+      title: 'Assigned Job Detail',
+      subtitle: 'Update inspection, technical notes, and allowed job transitions.',
+    }
+  }
+
+  return routeHeaders[pathname]
 }

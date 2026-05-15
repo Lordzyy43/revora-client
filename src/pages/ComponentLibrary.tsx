@@ -9,10 +9,10 @@ import type { ServiceStatus } from '../types'
 
 const statuses: ServiceStatus[] = [
   'Booked',
-  'Checked In',
+  'Vehicle Received',
   'Inspection',
-  'Diagnosis',
   'Waiting Approval',
+  'Estimate Approved',
   'In Progress',
   'Quality Check',
   'Ready',
