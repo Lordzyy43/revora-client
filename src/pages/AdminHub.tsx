@@ -1,4 +1,5 @@
 import { AlertTriangle, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { AsyncState } from '../components/AsyncState'
 import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
@@ -40,10 +41,10 @@ export function AdminHub() {
             <h2>Work Order Queue</h2>
             <p>Prioritized by customer impact, stage risk, and due time.</p>
           </div>
-          <button className="button button-primary" type="button">
+          <Link className="button button-primary" to="/admin/bookings">
             <Plus size={16} />
             Create Work Order
-          </button>
+          </Link>
         </div>
         <div className="filter-row">
           {['All Status', 'High Priority', 'Waiting Approval', 'Unassigned', 'Due Today'].map(
@@ -70,7 +71,9 @@ export function AdminHub() {
             title="No service orders yet"
           />
         ) : null}
-        {orders.length > 0 ? <WorkOrderTable orders={orders} compact /> : null}
+        {orders.length > 0 ? (
+          <WorkOrderTable compact detailBasePath="/admin/service-orders" orders={orders} />
+        ) : null}
       </section>
 
       <section className="page-grid">

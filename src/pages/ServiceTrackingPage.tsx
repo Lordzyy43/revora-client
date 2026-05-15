@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Camera, FileText, MessageSquare } from 'lucide-react'
+import { ClipboardCheck, FileText, MessageSquare, Wrench } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -36,6 +36,9 @@ export function ServiceTrackingPage() {
   const finalTotal = tracking?.cost_summary.final_total
     ? formatCurrency(tracking.cost_summary.final_total)
     : '-'
+  const canApprove =
+    tracking?.current_status === 'waiting_approval' &&
+    tracking.customer_approval_status === 'pending'
 
   if (!serviceOrderId) {
     return (
@@ -65,7 +68,10 @@ export function ServiceTrackingPage() {
           <div>
             <p className="eyebrow">{tracking.booking_code}</p>
             <h2>Service Tracking</h2>
-            <p>Approval status: {tracking.customer_approval_status}</p>
+            <p>
+              {tracking.vehicle.brand} {tracking.vehicle.model} {tracking.vehicle.year} |{' '}
+              {tracking.vehicle.plate_number} | Approval: {tracking.customer_approval_status}
+            </p>
           </div>
           <StatusBadge>{currentStatus}</StatusBadge>
         </div>
@@ -77,10 +83,18 @@ export function ServiceTrackingPage() {
       <section className="content-card span-7">
         <h2>Estimate Approval</h2>
         <div className="estimate-table">
-          <div>
-            <span>Estimate items</span>
-            <strong>{tracking?.cost_summary.items_count ?? 0}</strong>
-          </div>
+          {tracking?.estimate_items.map((item) => (
+            <div key={item.id}>
+              <span>
+                {item.name}
+                <small>
+                  {item.item_type} | Qty {item.quantity}
+                  {item.note ? ` | ${item.note}` : ''}
+                </small>
+              </span>
+              <strong>{formatCurrency(item.subtotal)}</strong>
+            </div>
+          ))}
           <div>
             <span>Estimated total</span>
             <strong>{estimateTotal}</strong>
@@ -105,14 +119,14 @@ export function ServiceTrackingPage() {
           <div className="button-row">
           <button
             className="button button-primary"
-            disabled={currentStatus !== 'Waiting Approval' || approveMutation.isPending}
+            disabled={!canApprove || approveMutation.isPending}
             type="submit"
           >
             Approve Estimate
           </button>
           <button
             className="button button-secondary"
-            disabled={currentStatus !== 'Waiting Approval' || rejectMutation.isPending}
+            disabled={!canApprove || rejectMutation.isPending}
             onClick={handleSubmit((values) => rejectMutation.mutate(values.note ?? ''))}
             type="button"
           >
@@ -123,9 +137,9 @@ export function ServiceTrackingPage() {
       </section>
 
       <section className="content-card span-5">
-        <h2>Notes & Evidence</h2>
+        <h2>Inspection & Notes</h2>
         <div className="list-row">
-          <Camera size={18} />
+          <ClipboardCheck size={18} />
           <div>
             <strong>
               {tracking ? `${tracking.inspection_summary.total} inspection items` : 'No inspection data'}
@@ -140,18 +154,61 @@ export function ServiceTrackingPage() {
         <div className="list-row">
           <MessageSquare size={18} />
           <div>
-            <strong>Advisor note</strong>
-            <p>{tracking?.timeline.find((item) => item.note)?.note ?? 'No advisor note yet.'}</p>
+            <strong>Recommendation</strong>
+            <p>{tracking?.notes.recommendation_note ?? 'No recommendation note yet.'}</p>
           </div>
         </div>
         <div className="list-row">
           <FileText size={18} />
           <div>
-            <strong>Invoice draft</strong>
-            <p>Final total: {finalTotal}</p>
+            <strong>Diagnosis</strong>
+            <p>{tracking?.notes.diagnosis_note ?? 'No diagnosis note yet.'}</p>
           </div>
         </div>
       </section>
+
+      <section className="content-card span-7">
+        <h2>Inspection Items</h2>
+        {!tracking?.inspection_items.length ? (
+          <AsyncState message="Inspection items will appear after workshop inspection." title="No inspection items" />
+        ) : null}
+        {tracking?.inspection_items.map((item) => (
+          <div className="list-row" key={item.id}>
+            <StatusBadge tone={inspectionTone(item.condition)}>{inspectionLabel(item.condition)}</StatusBadge>
+            <div>
+              <strong>{item.component_name}</strong>
+              <p>{item.note ?? 'No note'}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="content-card span-5">
+        <h2>Timeline Notes</h2>
+        {tracking?.timeline.map((item) => (
+          <div className="list-row" key={`${item.key}-${item.timestamp}`}>
+            <Wrench size={18} />
+            <div>
+              <strong>{item.label}</strong>
+              <p>{item.note ?? 'No note'} {item.timestamp ? `| ${new Date(item.timestamp).toLocaleString('id-ID')}` : ''}</p>
+            </div>
+          </div>
+        ))}
+      </section>
     </MotionPage>
   )
+}
+
+function inspectionLabel(condition: string) {
+  if (condition === 'attention') return 'Needs Attention'
+  if (condition === 'critical') return 'Critical'
+
+  return 'Good'
+}
+
+function inspectionTone(condition: string) {
+  if (condition === 'critical') return 'danger'
+  if (condition === 'attention') return 'warning'
+
+  return 'success'
 }

@@ -1,4 +1,8 @@
-import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AlertTriangle, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
 import { AsyncState } from '../components/AsyncState'
 import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
@@ -6,6 +10,7 @@ import { StatCard } from '../components/StatCard'
 import { StatusBadge } from '../components/StatusBadge'
 import {
   useDeleteOwnerStaff,
+  useCreateOwnerStaff,
   useOwnerActivity,
   useOwnerBookings,
   useOwnerCustomers,
@@ -13,9 +18,27 @@ import {
   useOwnerServiceOrders,
   useOwnerServices,
   useOwnerStaff,
+  useUpdateOwnerStaff,
 } from '../hooks/useOwner'
 import { formatCurrency, toServiceStatus } from '../lib/status'
 import type { Stat } from '../types'
+import type { AuthUser } from '../stores/authStore'
+
+const staffSchema = z
+  .object({
+    name: z.string().min(2, 'Name is required'),
+    email: z.string().email('Valid email is required'),
+    phone: z.string().optional(),
+    role: z.enum(['admin', 'mechanic']),
+    password: z.string().optional(),
+    password_confirmation: z.string().optional(),
+  })
+  .refine((values) => (values.password ?? '') === (values.password_confirmation ?? ''), {
+    message: 'Passwords do not match',
+    path: ['password_confirmation'],
+  })
+
+type StaffForm = z.infer<typeof staffSchema>
 
 export function OwnerDashboard() {
   const dashboardQuery = useOwnerDashboard()
@@ -26,6 +49,8 @@ export function OwnerDashboard() {
   const servicesQuery = useOwnerServices()
   const staffQuery = useOwnerStaff()
   const deleteStaffMutation = useDeleteOwnerStaff()
+  const [editingStaff, setEditingStaff] = useState<AuthUser | null>(null)
+  const [showStaffForm, setShowStaffForm] = useState(false)
 
   const dashboard = dashboardQuery.data
   const statsSource = dashboard?.business_stats ?? dashboard?.stats ?? {}
@@ -141,7 +166,14 @@ export function OwnerDashboard() {
         <div className="content-card span-4">
           <div className="section-heading">
             <h2>Staff</h2>
-            <button className="button button-secondary" type="button">
+            <button
+              className="button button-secondary"
+              onClick={() => {
+                setEditingStaff(null)
+                setShowStaffForm((current) => !current)
+              }}
+              type="button"
+            >
               <Plus size={15} />
               Add
             </button>
@@ -156,6 +188,17 @@ export function OwnerDashboard() {
               </div>
               <button
                 className="icon-button"
+                onClick={() => {
+                  setEditingStaff(member)
+                  setShowStaffForm(true)
+                }}
+                type="button"
+                aria-label={`Edit ${member.name}`}
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                className="icon-button"
                 disabled={deleteStaffMutation.isPending}
                 onClick={() => deleteStaffMutation.mutate(member.id)}
                 type="button"
@@ -165,9 +208,79 @@ export function OwnerDashboard() {
               </button>
             </div>
           ))}
+          {showStaffForm ? (
+            <StaffFormPanel
+              editingStaff={editingStaff}
+              onClose={() => {
+                setEditingStaff(null)
+                setShowStaffForm(false)
+              }}
+            />
+          ) : null}
         </div>
       </section>
     </MotionPage>
+  )
+}
+
+function StaffFormPanel({
+  editingStaff,
+  onClose,
+}: {
+  editingStaff: AuthUser | null
+  onClose: () => void
+}) {
+  const createMutation = useCreateOwnerStaff()
+  const updateMutation = useUpdateOwnerStaff(editingStaff?.id ?? '')
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+  } = useForm<StaffForm>({
+    resolver: zodResolver(staffSchema),
+    defaultValues: {
+      name: editingStaff?.name ?? '',
+      email: editingStaff?.email ?? '',
+      phone: editingStaff?.phone ?? '',
+      role: editingStaff?.role === 'mechanic' ? 'mechanic' : 'admin',
+      password: '',
+      password_confirmation: '',
+    },
+  })
+
+  function submit(values: StaffForm) {
+    const payload = {
+      ...values,
+      password: values.password || undefined,
+      password_confirmation: values.password_confirmation || undefined,
+    }
+
+    if (editingStaff) {
+      updateMutation.mutate(payload, { onSuccess: onClose })
+      return
+    }
+
+    createMutation.mutate(payload, { onSuccess: onClose })
+  }
+
+  return (
+    <form className="form-stack compact-form" onSubmit={handleSubmit(submit)}>
+      <h3>{editingStaff ? 'Edit Staff' : 'Create Staff'}</h3>
+      <label>Name<input {...register('name')} />{errors.name ? <small className="field-error">{errors.name.message}</small> : null}</label>
+      <label>Email<input {...register('email')} />{errors.email ? <small className="field-error">{errors.email.message}</small> : null}</label>
+      <label>Phone<input {...register('phone')} /></label>
+      <label>Role<select {...register('role')}><option value="admin">Admin</option><option value="mechanic">Mechanic</option></select></label>
+      <label>Password<input {...register('password')} type="password" placeholder={editingStaff ? 'Leave empty to keep current' : ''} /></label>
+      <label>Confirm Password<input {...register('password_confirmation')} type="password" />{errors.password_confirmation ? <small className="field-error">{errors.password_confirmation.message}</small> : null}</label>
+      <div className="button-row">
+        <button className="button button-primary" disabled={createMutation.isPending || updateMutation.isPending} type="submit">
+          {editingStaff ? 'Save Staff' : 'Create Staff'}
+        </button>
+        <button className="button button-secondary" onClick={onClose} type="button">
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
 

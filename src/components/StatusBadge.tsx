@@ -7,9 +7,8 @@ type Props = {
 
 const toneByLabel: Record<string, Props['tone']> = {
   Booked: 'neutral',
-  'Checked In': 'info',
+  'Vehicle Received': 'info',
   Inspection: 'info',
-  Diagnosis: 'warning',
   'Waiting Approval': 'warning',
   'Estimate Approved': 'success',
   'In Progress': 'info',

@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  cancelBooking,
   createAdminServiceOrder,
   createBooking,
+  fetchAdminBooking,
   fetchAdminBookings,
+  fetchBooking,
   fetchBookings,
   fetchBookingSlots,
   updateAdminBookingStatus,
@@ -14,6 +17,14 @@ export function useBookings() {
   return useQuery({
     queryKey: ['customer', 'bookings'],
     queryFn: () => fetchBookings(),
+  })
+}
+
+export function useBooking(bookingId: number | string) {
+  return useQuery({
+    enabled: Boolean(bookingId),
+    queryKey: ['customer', 'bookings', bookingId],
+    queryFn: () => fetchBooking(bookingId),
   })
 }
 
@@ -37,10 +48,30 @@ export function useCreateBooking() {
   })
 }
 
+export function useCancelBooking() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (bookingId: number | string) => cancelBooking(bookingId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
+      void queryClient.invalidateQueries({ queryKey: ['customer', 'dashboard'] })
+    },
+  })
+}
+
 export function useAdminBookings() {
   return useQuery({
     queryKey: ['admin', 'bookings'],
     queryFn: () => fetchAdminBookings(),
+  })
+}
+
+export function useAdminBooking(bookingId: number | string) {
+  return useQuery({
+    enabled: Boolean(bookingId),
+    queryKey: ['admin', 'bookings', bookingId],
+    queryFn: () => fetchAdminBooking(bookingId),
   })
 }
 

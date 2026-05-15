@@ -1,47 +1,64 @@
 import { ArrowRight, CalendarClock, Car, CreditCard } from 'lucide-react'
-import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AsyncState } from '../components/AsyncState'
 import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
 import { ServiceTimeline } from '../components/ServiceTimeline'
 import { StatusBadge } from '../components/StatusBadge'
-import { useBookingSlots, useBookings, useCreateBooking } from '../hooks/useBookings'
-import { useServices } from '../hooks/useCatalog'
+import { useBookings } from '../hooks/useBookings'
+import { useCustomerDashboardSummary } from '../hooks/useDashboard'
 import { useCustomerServiceOrders } from '../hooks/useServiceOrders'
 import { useVehicles } from '../hooks/useVehicles'
-import { formatCurrency } from '../lib/status'
 
 export function CustomerDashboard() {
   const vehiclesQuery = useVehicles()
+  const dashboardQuery = useCustomerDashboardSummary()
   const serviceOrdersQuery = useCustomerServiceOrders()
   const bookingsQuery = useBookings()
-  const servicesQuery = useServices({ per_page: 20 })
-  const [bookingDate, setBookingDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [bookingTime, setBookingTime] = useState('')
-  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null)
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([])
-  const createBookingMutation = useCreateBooking()
-  const slotsQuery = useBookingSlots(bookingDate)
   const vehicles = vehiclesQuery.data ?? []
   const serviceOrders = serviceOrdersQuery.data ?? []
   const bookings = bookingsQuery.data ?? []
-  const services = useMemo(() => servicesQuery.data ?? [], [servicesQuery.data])
   const activeService = serviceOrders.find((order) => !['Completed', 'Cancelled'].includes(order.status))
   const completedServices = serviceOrders.filter((order) => order.status === 'Completed')
-  const bookingReady =
-    selectedVehicleId !== null && selectedServiceIds.length > 0 && Boolean(bookingDate) && Boolean(bookingTime)
   const pendingBookings = bookings.filter((booking) => ['pending', 'confirmed'].includes(booking.status))
-  const selectedTotal = useMemo(
-    () =>
-      services
-        .filter((service) => selectedServiceIds.includes(service.id))
-        .reduce((sum, service) => sum + Number(service.base_price ?? 0), 0),
-    [selectedServiceIds, services],
-  )
 
   return (
     <MotionPage className="page-grid">
+      <section className="stat-grid span-12">
+        {dashboardQuery.isLoading ? <LoadingBlock rows={4} /> : null}
+        {dashboardQuery.data ? (
+          <>
+            <article className="stat-card">
+              <div>
+                <p className="eyebrow">Vehicles</p>
+                <strong>{dashboardQuery.data.vehicles_count}</strong>
+              </div>
+              <span className="trend">registered</span>
+            </article>
+            <article className="stat-card">
+              <div>
+                <p className="eyebrow">Upcoming Bookings</p>
+                <strong>{dashboardQuery.data.upcoming_bookings_count}</strong>
+              </div>
+              <span className="trend trend-warning">scheduled</span>
+            </article>
+            <article className="stat-card">
+              <div>
+                <p className="eyebrow">Pending Approval</p>
+                <strong>{dashboardQuery.data.pending_approval_count}</strong>
+              </div>
+              <span className="trend trend-danger">action</span>
+            </article>
+            <article className="stat-card">
+              <div>
+                <p className="eyebrow">Completed Bookings</p>
+                <strong>{dashboardQuery.data.stats.completed_bookings}</strong>
+              </div>
+              <span className="trend trend-good">history</span>
+            </article>
+          </>
+        ) : null}
+      </section>
       <section className="content-card span-8">
         {serviceOrdersQuery.isLoading ? <LoadingBlock /> : null}
         {serviceOrdersQuery.isError ? (
@@ -171,106 +188,16 @@ export function CustomerDashboard() {
           </div>
         ))}
       </section>
-      <section className="content-card span-7">
+      <section className="content-card span-12">
         <div className="section-heading">
           <div>
-            <h2>Book Service</h2>
-            <p>Choose a vehicle, active services, date, and an available workshop slot.</p>
+            <h2>Upcoming Bookings</h2>
+            <p>Open the bookings page to create a new reservation or review all booking history.</p>
           </div>
+          <Link className="button button-primary" to="/customer/bookings">
+            Book Service
+          </Link>
         </div>
-        {vehicles.length === 0 ? (
-          <AsyncState message="Create a vehicle before booking a service." title="Vehicle required" />
-        ) : null}
-        <div className="booking-form-grid">
-          <label>
-            Vehicle
-            <select
-              onChange={(event) => setSelectedVehicleId(Number(event.target.value))}
-              value={selectedVehicleId ?? ''}
-            >
-              <option value="">Select vehicle</option>
-              {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.brand} {vehicle.model} - {vehicle.plate_number}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Date
-            <input
-              onChange={(event) => {
-                setBookingDate(event.target.value)
-                setBookingTime('')
-              }}
-              type="date"
-              value={bookingDate}
-            />
-          </label>
-        </div>
-        <div className="service-selector">
-          {servicesQuery.isLoading ? <LoadingBlock rows={3} /> : null}
-          {services.map((service) => {
-            const checked = selectedServiceIds.includes(service.id)
-
-            return (
-              <label className="service-option" key={service.id}>
-                <input
-                  checked={checked}
-                  onChange={(event) =>
-                    setSelectedServiceIds((current) =>
-                      event.target.checked
-                        ? [...current, service.id]
-                        : current.filter((id) => id !== service.id),
-                    )
-                  }
-                  type="checkbox"
-                />
-                <span>
-                  <strong>{service.name}</strong>
-                  <small>{formatCurrency(service.base_price)}</small>
-                </span>
-              </label>
-            )
-          })}
-        </div>
-        <div className="slot-grid">
-          {slotsQuery.data?.slots.map((slot) => (
-            <button
-              className={`slot-button ${bookingTime === slot.time ? 'active' : ''}`}
-              disabled={!slot.available}
-              key={slot.time}
-              onClick={() => setBookingTime(slot.time)}
-              type="button"
-            >
-              <strong>{slot.time}</strong>
-              <small>{slot.remaining} left</small>
-            </button>
-          ))}
-        </div>
-        <div className="section-heading compact-heading">
-          <strong>Total estimate: {formatCurrency(selectedTotal)}</strong>
-          <button
-            className="button button-primary"
-            disabled={!bookingReady || createBookingMutation.isPending}
-            onClick={() => {
-              if (!selectedVehicleId) return
-              createBookingMutation.mutate({
-                vehicle_id: selectedVehicleId,
-                service_ids: selectedServiceIds,
-                booking_date: bookingDate,
-                booking_time: bookingTime,
-                complaint_note: '',
-              })
-            }}
-            type="button"
-          >
-            Create Booking
-          </button>
-        </div>
-      </section>
-      <section className="content-card span-5">
-        <h2>Upcoming Bookings</h2>
         {bookingsQuery.isLoading ? <LoadingBlock rows={3} /> : null}
         {!bookingsQuery.isLoading && pendingBookings.length === 0 ? (
           <AsyncState message="New bookings will appear here after submission." title="No upcoming bookings" />
@@ -279,7 +206,9 @@ export function CustomerDashboard() {
           <div className="list-row" key={booking.id}>
             <StatusBadge>{booking.status}</StatusBadge>
             <div>
-              <strong>{booking.booking_code ?? `Booking #${booking.id}`}</strong>
+              <Link className="subtle-link" to={`/customer/bookings/${booking.id}`}>
+                {booking.booking_code ?? `Booking #${booking.id}`}
+              </Link>
               <p>
                 {booking.booking_date} {booking.booking_time}
               </p>
