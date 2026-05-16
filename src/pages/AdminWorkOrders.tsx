@@ -7,10 +7,21 @@ import { MotionPage } from '../components/MotionPage'
 import { ServiceTimeline } from '../components/ServiceTimeline'
 import { StatusBadge } from '../components/StatusBadge'
 import { WorkOrderTable } from '../components/WorkOrderTable'
-import { useAdminServiceOrders } from '../hooks/useServiceOrders'
+import { useAdminServiceOrderKanban, useAdminServiceOrders } from '../hooks/useServiceOrders'
+import type { ServiceStatus } from '../types'
+
+const kanbanStatuses: ServiceStatus[] = [
+  'Vehicle Received',
+  'Inspection',
+  'Waiting Approval',
+  'In Progress',
+  'Quality Check',
+  'Completed',
+]
 
 export function AdminWorkOrders() {
   const serviceOrdersQuery = useAdminServiceOrders()
+  const kanbanQuery = useAdminServiceOrderKanban()
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const filteredOrders = useMemo(() => {
@@ -68,6 +79,49 @@ export function AdminWorkOrders() {
             selectedOrderId={selected?.id}
           />
         ) : null}
+      </section>
+
+      <section className="content-card">
+        <div className="section-heading">
+          <div>
+            <h2>Workflow Board</h2>
+            <p>Visual queue based on service-order status from the backend.</p>
+          </div>
+        </div>
+        <div className="kanban-board">
+          {kanbanStatuses.map((status) => {
+            const backendColumn = kanbanQuery.data?.columns.find((column) => column.label === status)
+            const orders = backendColumn
+              ? backendColumn.orders.map((order) => ({
+                  customer: order.customer?.name ?? 'Customer',
+                  id: order.booking_code ?? `SO-${order.id}`,
+                  serviceOrderId: order.id,
+                  vehicle: [order.vehicle?.brand, order.vehicle?.model].filter(Boolean).join(' ') || 'Vehicle',
+                }))
+              : (serviceOrdersQuery.data ?? []).filter((order) => order.status === status)
+
+            return (
+              <div className="kanban-column" key={status}>
+                <div className="section-heading compact-heading">
+                  <strong>{status}</strong>
+                  <StatusBadge tone="info">{String(orders.length)}</StatusBadge>
+                </div>
+                {orders.slice(0, 4).map((order) => (
+                  <Link
+                    className="kanban-card"
+                    key={order.id}
+                    to={`/admin/service-orders/${order.serviceOrderId}`}
+                  >
+                    <strong>{order.id}</strong>
+                    <span>{order.vehicle}</span>
+                    <small>{order.customer}</small>
+                  </Link>
+                ))}
+                {orders.length === 0 ? <small className="muted-text">No orders</small> : null}
+              </div>
+            )
+          })}
+        </div>
       </section>
 
       <aside className="detail-panel">

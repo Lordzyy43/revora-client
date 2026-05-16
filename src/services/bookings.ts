@@ -46,6 +46,13 @@ export type BookingSlot = {
   capacity: number
   remaining: number
   available: boolean
+  reason?: string | null
+}
+
+export type BookingSlotsResponse = {
+  date: string
+  estimated_duration?: number
+  slots: BookingSlot[]
 }
 
 export type CreateBookingPayload = {
@@ -92,10 +99,14 @@ export async function cancelBooking(bookingId: number | string) {
   await api.delete<ApiResponse<null>>(`/bookings/${bookingId}`)
 }
 
-export async function fetchBookingSlots(date: string) {
-  const response = await api.get<ApiResponse<{ date: string; slots: BookingSlot[] }>>(
+export async function fetchBookingSlots(date: string, serviceIds?: number[]) {
+  const params = new URLSearchParams({ date })
+
+  serviceIds?.forEach((serviceId) => params.append('service_ids[]', String(serviceId)))
+
+  const response = await api.get<ApiResponse<BookingSlotsResponse>>(
     '/booking-slots',
-    { params: { date } },
+    { params },
   )
 
   return response.data.data

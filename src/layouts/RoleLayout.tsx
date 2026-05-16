@@ -1,9 +1,11 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Bell, LogOut, Search } from 'lucide-react'
+import { useState } from 'react'
 import { Brand } from '../components/Brand'
 import { roleNav } from '../data/revora'
 import { useLogout } from '../hooks/useAuth'
 import { useCurrentUser } from '../hooks/useCurrentUser'
+import { useMarkAllNotificationsRead, useNotifications } from '../hooks/useNotifications'
 import { useAuthStore } from '../stores/authStore'
 import type { Role } from '../types'
 
@@ -22,9 +24,13 @@ const roleNames: Record<Role, string> = {
 
 export function RoleLayout({ role, title, subtitle }: Props) {
   const { pathname } = useLocation()
+  const [showNotifications, setShowNotifications] = useState(false)
   const logoutMutation = useLogout()
   const storedUser = useAuthStore((state) => state.user)
+  const token = useAuthStore((state) => state.token)
   const currentUserQuery = useCurrentUser()
+  const notificationsQuery = useNotifications(Boolean(token))
+  const markAllReadMutation = useMarkAllNotificationsRead()
   const user = currentUserQuery.data ?? storedUser
   const header = getRouteHeader(pathname) ?? { title, subtitle }
   const activeNav = [...roleNav[role]]
@@ -62,9 +68,45 @@ export function RoleLayout({ role, title, subtitle }: Props) {
               <Search size={16} />
               <input placeholder="Search vehicles, customers, orders" />
             </label>
-            <button className="icon-button" type="button" aria-label="Notifications">
+            <button
+              className="icon-button notification-button"
+              onClick={() => setShowNotifications((current) => !current)}
+              type="button"
+              aria-label="Notifications"
+            >
               <Bell size={18} />
+              {notificationsQuery.data?.unread_count ? (
+                <span>{notificationsQuery.data.unread_count}</span>
+              ) : null}
             </button>
+            {showNotifications ? (
+              <div className="notification-panel">
+                <div className="section-heading compact-heading">
+                  <strong>Notifications</strong>
+                  <button
+                    className="subtle-link"
+                    disabled={markAllReadMutation.isPending}
+                    onClick={() => markAllReadMutation.mutate()}
+                    type="button"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                {notificationsQuery.data?.notifications.data.slice(0, 5).map((notification) => (
+                  <Link
+                    className={`notification-item ${notification.read_at ? '' : 'unread'}`}
+                    key={notification.id}
+                    to={notificationLink(notification.data?.service_order_id, role)}
+                  >
+                    <strong>{notification.title}</strong>
+                    <p>{notification.body}</p>
+                  </Link>
+                ))}
+                {!notificationsQuery.data?.notifications.data.length ? (
+                  <p>No notifications yet.</p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="user-chip">
               <span>{user?.name ?? roleNames[role]}</span>
               <button
@@ -85,6 +127,15 @@ export function RoleLayout({ role, title, subtitle }: Props) {
       </div>
     </div>
   )
+}
+
+function notificationLink(serviceOrderId: number | undefined, role: Role) {
+  if (!serviceOrderId) return `/${role}`
+  if (role === 'customer') return `/customer/service-orders/${serviceOrderId}`
+  if (role === 'mechanic') return `/mechanic/service-orders/${serviceOrderId}`
+  if (role === 'admin') return `/admin/service-orders/${serviceOrderId}`
+
+  return '/owner'
 }
 
 const routeHeaders: Record<string, { title: string; subtitle: string }> = {

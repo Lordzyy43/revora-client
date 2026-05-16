@@ -1,6 +1,6 @@
 import { CalendarClock, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AsyncState } from '../components/AsyncState'
 import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
@@ -15,13 +15,17 @@ export function CustomerBookings() {
   const vehiclesQuery = useVehicles()
   const servicesQuery = useServices({ per_page: 40 })
   const createBookingMutation = useCreateBooking()
+  const [searchParams] = useSearchParams()
+  const serviceIntent = Number(searchParams.get('service_id') ?? 0)
   const [statusFilter, setStatusFilter] = useState('all')
   const [bookingDate, setBookingDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [bookingTime, setBookingTime] = useState('')
   const [complaintNote, setComplaintNote] = useState('')
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null)
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([])
-  const slotsQuery = useBookingSlots(bookingDate)
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(() =>
+    serviceIntent ? [serviceIntent] : [],
+  )
+  const slotsQuery = useBookingSlots(bookingDate, selectedServiceIds)
   const vehicles = vehiclesQuery.data ?? []
   const services = useMemo(() => servicesQuery.data ?? [], [servicesQuery.data])
   const filteredBookings = useMemo(
@@ -193,10 +197,13 @@ export function CustomerBookings() {
               type="button"
             >
               <strong>{slot.time}</strong>
-              <small>{slot.remaining} left</small>
+              <small>{slot.available ? `${slot.remaining} left` : (slot.reason ?? 'Unavailable')}</small>
             </button>
           ))}
         </div>
+        {slotsQuery.data?.estimated_duration ? (
+          <p className="note-box">Estimated duration: {slotsQuery.data.estimated_duration} minutes</p>
+        ) : null}
         <div className="section-heading compact-heading">
           <strong>{formatCurrency(selectedTotal)}</strong>
           <button

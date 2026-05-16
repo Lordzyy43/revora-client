@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Brand } from '../components/Brand'
 import { MotionPage } from '../components/MotionPage'
@@ -18,6 +18,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const loginMutation = useLogin()
   const token = useAuthStore((state) => state.token)
   const role = useAuthStore((state) => state.role)
@@ -35,9 +36,11 @@ export function LoginPage() {
 
   useEffect(() => {
     if (token && role) {
-      navigate(`/${role}`, { replace: true })
+      const redirect = searchParams.get('redirect')
+
+      navigate(redirect && redirect.startsWith('/') ? redirect : `/${role}`, { replace: true })
     }
-  }, [navigate, role, token])
+  }, [navigate, role, searchParams, token])
 
   return (
     <MotionPage className="login-page">
@@ -77,6 +80,9 @@ export function LoginPage() {
         </a>
         <Link className="subtle-link" to="/register">
           Create customer account
+        </Link>
+        <Link className="subtle-link" to="/">
+          Back to public site
         </Link>
       </section>
 

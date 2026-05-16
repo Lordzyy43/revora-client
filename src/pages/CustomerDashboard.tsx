@@ -21,9 +21,26 @@ export function CustomerDashboard() {
   const activeService = serviceOrders.find((order) => !['Completed', 'Cancelled'].includes(order.status))
   const completedServices = serviceOrders.filter((order) => order.status === 'Completed')
   const pendingBookings = bookings.filter((booking) => ['pending', 'confirmed'].includes(booking.status))
+  const dashboardState = getCustomerState({
+    activeService: Boolean(activeService),
+    hasPendingApproval: dashboardQuery.data?.pending_approval_count ? dashboardQuery.data.pending_approval_count > 0 : false,
+    pendingBookingsCount: pendingBookings.length,
+    vehiclesCount: vehicles.length,
+  })
 
   return (
     <MotionPage className="page-grid">
+      <section className="content-card span-12 onboarding-panel">
+        <div>
+          <p className="eyebrow">Next best action</p>
+          <h2>{dashboardState.title}</h2>
+          <p>{dashboardState.message}</p>
+        </div>
+        <Link className="button button-primary" to={dashboardState.to}>
+          {dashboardState.action}
+          <ArrowRight size={16} />
+        </Link>
+      </section>
       <section className="stat-grid span-12">
         {dashboardQuery.isLoading ? <LoadingBlock rows={4} /> : null}
         {dashboardQuery.data ? (
@@ -218,4 +235,59 @@ export function CustomerDashboard() {
       </section>
     </MotionPage>
   )
+}
+
+function getCustomerState({
+  activeService,
+  hasPendingApproval,
+  pendingBookingsCount,
+  vehiclesCount,
+}: {
+  activeService: boolean
+  hasPendingApproval: boolean
+  pendingBookingsCount: number
+  vehiclesCount: number
+}) {
+  if (vehiclesCount === 0) {
+    return {
+      action: 'Add Vehicle',
+      message: 'Start by registering the vehicle you want to service.',
+      title: 'Add your first vehicle',
+      to: '/customer/vehicles',
+    }
+  }
+
+  if (hasPendingApproval) {
+    return {
+      action: 'Review Estimate',
+      message: 'The workshop is waiting for your approval before repair continues.',
+      title: 'Estimate approval required',
+      to: '/customer/tracking',
+    }
+  }
+
+  if (activeService) {
+    return {
+      action: 'View Tracking',
+      message: 'Your vehicle is already inside the workshop service flow.',
+      title: 'Track active service',
+      to: '/customer/tracking',
+    }
+  }
+
+  if (pendingBookingsCount > 0) {
+    return {
+      action: 'Review Bookings',
+      message: 'You have a booking waiting for confirmation or workshop arrival.',
+      title: 'Booking is scheduled',
+      to: '/customer/bookings',
+    }
+  }
+
+  return {
+    action: 'Book Service',
+    message: 'Choose a service and reserve an available workshop slot.',
+    title: 'Ready to book a service',
+    to: '/services',
+  }
 }

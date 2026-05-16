@@ -92,6 +92,9 @@ export function RegisterPage() {
           ) : null}
         </form>
         <Link className="subtle-link" to="/">
+          Back to public site
+        </Link>
+        <Link className="subtle-link" to="/login">
           Already have an account?
         </Link>
       </section>

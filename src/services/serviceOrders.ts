@@ -42,6 +42,7 @@ export type ApiServiceOrder = {
   allowed_transitions?: ApiServiceOrderStatus[]
   inspection_items?: ApiInspectionItem[]
   estimate_items?: ApiEstimateItem[]
+  attachments?: ServiceOrderAttachment[]
   inspection_note?: string | null
   diagnosis_note?: string | null
   recommendation_note?: string | null
@@ -105,7 +106,51 @@ export type TrackingResponse = {
       items_count: number
     }
     estimate_items: ApiEstimateItem[]
+    attachments?: ServiceOrderAttachment[]
     notes: ApiServiceOrderNotes
+  }
+}
+
+export type ServiceOrderAttachment = {
+  id: number
+  service_order_id?: number
+  type: string
+  url: string
+  caption?: string | null
+  uploaded_by?: {
+    id: number
+    name: string
+    role?: string
+  }
+  created_at?: string
+}
+
+export type Invoice = {
+  id: number
+  invoice_code: string
+  service_order_id: number
+  status: 'draft' | 'issued' | 'paid' | 'void'
+  subtotal: string | number
+  tax: string | number
+  discount: string | number
+  total: string | number
+  issued_at?: string | null
+  paid_at?: string | null
+  created_at?: string
+}
+
+export type ServiceOrderKanban = {
+  columns: Array<{
+    status: ApiServiceOrderStatus
+    label: string
+    count: number
+    orders: ApiServiceOrder[]
+  }>
+  summary: {
+    total: number
+    waiting_approval: number
+    unassigned: number
+    overdue: number
   }
 }
 
@@ -119,6 +164,12 @@ export async function fetchAdminServiceOrders(params?: Record<string, string | n
     : response.data.data.data
 
   return serviceOrders.map(toWorkOrder)
+}
+
+export async function fetchAdminServiceOrderKanban() {
+  const response = await api.get<ApiResponse<ServiceOrderKanban>>('/admin/service-orders/kanban')
+
+  return response.data.data
 }
 
 export async function fetchAdminServiceOrder(serviceOrderId: number | string) {
@@ -165,6 +216,46 @@ export async function fetchCustomerTracking(serviceOrderId: number | string) {
   )
 
   return response.data.data.tracking
+}
+
+export async function fetchServiceOrderAttachments(serviceOrderId: number | string) {
+  const response = await api.get<ApiResponse<ServiceOrderAttachment[]>>(
+    `/service-orders/${serviceOrderId}/attachments`,
+  )
+
+  return response.data.data
+}
+
+export async function createAdminServiceOrderAttachment(
+  serviceOrderId: number | string,
+  payload: { type: string; url: string; caption?: string },
+) {
+  const response = await api.post<ApiResponse<ServiceOrderAttachment>>(
+    `/admin/service-orders/${serviceOrderId}/attachments`,
+    payload,
+  )
+
+  return response.data.data
+}
+
+export async function createMechanicServiceOrderAttachment(
+  serviceOrderId: number | string,
+  payload: { type: string; url: string; caption?: string },
+) {
+  const response = await api.post<ApiResponse<ServiceOrderAttachment>>(
+    `/mechanic/service-orders/${serviceOrderId}/attachments`,
+    payload,
+  )
+
+  return response.data.data
+}
+
+export async function fetchServiceOrderInvoice(serviceOrderId: number | string) {
+  const response = await api.get<ApiResponse<Invoice | null>>(
+    `/service-orders/${serviceOrderId}/invoice`,
+  )
+
+  return response.data.data
 }
 
 export async function approveEstimate(serviceOrderId: number | string, note: string) {

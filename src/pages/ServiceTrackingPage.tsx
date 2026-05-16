@@ -13,6 +13,7 @@ import {
   useApproveEstimate,
   useCustomerTracking,
   useRejectEstimate,
+  useServiceOrderInvoice,
 } from '../hooks/useServiceOrders'
 
 const approvalSchema = z.object({
@@ -25,6 +26,7 @@ export function ServiceTrackingPage() {
   const { serviceOrderId } = useParams()
   const trackingQuery = useCustomerTracking(serviceOrderId ?? '')
   const tracking = trackingQuery.data
+  const invoiceQuery = useServiceOrderInvoice(serviceOrderId ?? '')
   const approveMutation = useApproveEstimate(serviceOrderId ?? '')
   const rejectMutation = useRejectEstimate(serviceOrderId ?? '')
   const { handleSubmit, register } = useForm<ApprovalForm>({
@@ -194,6 +196,36 @@ export function ServiceTrackingPage() {
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="content-card span-7">
+        <h2>Evidence Attachments</h2>
+        {!tracking?.attachments?.length ? (
+          <AsyncState message="Inspection proof will appear here when the workshop uploads evidence." title="No evidence yet" />
+        ) : null}
+        <div className="attachment-grid">
+          {tracking?.attachments?.map((attachment) => (
+            <a className="attachment-card" href={attachment.url} key={attachment.id} target="_blank" rel="noreferrer">
+              <img alt="" src={attachment.url} />
+              <strong>{attachment.caption ?? attachment.type}</strong>
+              <small>{attachment.uploaded_by?.name ?? 'Workshop'}</small>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="content-card span-5">
+        <h2>Invoice</h2>
+        {invoiceQuery.isLoading ? <LoadingBlock rows={2} /> : null}
+        {invoiceQuery.data ? (
+          <div className="metric-list">
+            <div><span>Invoice</span><strong>{invoiceQuery.data.invoice_code}</strong></div>
+            <div><span>Status</span><StatusBadge>{invoiceQuery.data.status}</StatusBadge></div>
+            <div><span>Total</span><strong>{formatCurrency(invoiceQuery.data.total)}</strong></div>
+          </div>
+        ) : (
+          <AsyncState message="Invoice appears after the workshop generates it." title="No invoice yet" />
+        )}
       </section>
     </MotionPage>
   )
