@@ -10,10 +10,13 @@ import { MotionPage } from '../components/MotionPage'
 import { ServiceTimeline } from '../components/ServiceTimeline'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAdminMechanics } from '../hooks/useAdmin'
+import { useInspectionTemplates } from '../hooks/useInspectionTemplates'
 import {
   useAddAdminEstimateItem,
   useAdminServiceOrder,
   useAssignAdminMechanic,
+  useCreateAdminAttachment,
+  useServiceOrderInvoice,
   useSyncAdminInspectionItems,
   useUpdateAdminNotes,
   useUpdateAdminStatus,
@@ -40,9 +43,24 @@ const inspectionSchema = z.object({
   note: z.string().optional(),
 })
 
+const attachmentSchema = z.object({
+  type: z.string().min(1, 'Type is required'),
+  url: z.string().url('Valid URL is required'),
+  caption: z.string().optional(),
+})
+
+const fallbackInspectionTemplates = [
+  { component_name: 'Engine Oil', condition: 'attention' as const, note: 'Check level, color, and leak signs.' },
+  { component_name: 'Brake System', condition: 'attention' as const, note: 'Inspect pads, fluid, and braking response.' },
+  { component_name: 'Battery', condition: 'good' as const, note: 'Check voltage and terminal condition.' },
+  { component_name: 'Tires', condition: 'attention' as const, note: 'Inspect tread depth and pressure.' },
+  { component_name: 'AC System', condition: 'good' as const, note: 'Check cooling performance and cabin airflow.' },
+]
+
 export function AdminServiceOrderDetail() {
   const { serviceOrderId } = useParams()
   const detailQuery = useAdminServiceOrder(serviceOrderId ?? '')
+  const invoiceQuery = useServiceOrderInvoice(serviceOrderId ?? '')
   const order = detailQuery.data
   const status = order ? toServiceStatus(order.status) : 'Booked'
 
@@ -95,6 +113,12 @@ export function AdminServiceOrderDetail() {
                 <div><span>Estimated</span><strong>{formatCurrency(order.estimated_total ?? order.total_estimated_price)}</strong></div>
                 <div><span>Final</span><strong>{formatCurrency(order.final_total)}</strong></div>
                 <div><span>Mechanic</span><strong>{order.mechanic?.name ?? 'Unassigned'}</strong></div>
+                {invoiceQuery.data ? (
+                  <>
+                    <div><span>Invoice</span><strong>{invoiceQuery.data.invoice_code}</strong></div>
+                    <div><span>Invoice Status</span><StatusBadge>{invoiceQuery.data.status}</StatusBadge></div>
+                  </>
+                ) : null}
               </div>
             </div>
           </section>
@@ -130,9 +154,67 @@ export function AdminServiceOrderDetail() {
               <EstimateItemForm orderId={serviceOrderId} disabled={!order.allowed_actions?.can_edit_estimate} />
             </div>
           </section>
+
+          <section className="page-grid">
+            <div className="content-card span-7">
+              <h2>Evidence Attachments</h2>
+              {!order.attachments?.length ? <AsyncState message="Evidence URL attachments will appear here." title="No evidence yet" /> : null}
+              <div className="attachment-grid">
+                {order.attachments?.map((attachment) => (
+                  <a className="attachment-card" href={attachment.url} key={attachment.id} target="_blank" rel="noreferrer">
+                    <img alt="" src={attachment.url} />
+                    <strong>{attachment.caption ?? attachment.type}</strong>
+                    <small>{attachment.uploaded_by?.name ?? 'Workshop'}</small>
+                  </a>
+                ))}
+              </div>
+            </div>
+            <div className="content-card span-5">
+              <AttachmentForm orderId={serviceOrderId} />
+            </div>
+          </section>
         </>
       ) : null}
     </MotionPage>
+  )
+}
+
+function AttachmentForm({ orderId }: { orderId: string }) {
+  const attachmentMutation = useCreateAdminAttachment(orderId)
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+    reset,
+  } = useForm({
+    resolver: zodResolver(attachmentSchema),
+    defaultValues: {
+      type: 'inspection_photo',
+      url: '',
+      caption: '',
+    },
+  })
+
+  return (
+    <form
+      className="form-stack"
+      onSubmit={handleSubmit((values) =>
+        attachmentMutation.mutate(values, {
+          onSuccess: () => reset({ type: 'inspection_photo', url: '', caption: '' }),
+        }),
+      )}
+    >
+      <h2>Add Evidence URL</h2>
+      <label>Type<input {...register('type')} />{errors.type ? <small className="field-error">{errors.type.message}</small> : null}</label>
+      <label>URL<input {...register('url')} />{errors.url ? <small className="field-error">{errors.url.message}</small> : null}</label>
+      <label>Caption<input {...register('caption')} /></label>
+      <button className="button button-primary" disabled={attachmentMutation.isPending} type="submit">
+        <Plus size={16} />
+        Add Evidence
+      </button>
+      {attachmentMutation.isSuccess ? <p className="form-success">Evidence attached.</p> : null}
+      {attachmentMutation.isError ? <p className="form-error">Evidence could not be attached.</p> : null}
+    </form>
   )
 }
 
@@ -275,7 +357,9 @@ function InspectionEditor({
   orderId: string
 }) {
   const syncMutation = useSyncAdminInspectionItems(orderId)
-  const { formState: { errors }, handleSubmit, register, reset } = useForm({
+  const templatesQuery = useInspectionTemplates()
+  const templates = templatesQuery.data?.length ? templatesQuery.data : fallbackInspectionTemplates
+  const { formState: { errors }, handleSubmit, register, reset, setValue } = useForm({
     resolver: zodResolver(inspectionSchema),
     defaultValues: {
       component_name: '',
@@ -309,6 +393,23 @@ function InspectionEditor({
       )}
     >
       <h2>Add Inspection Item</h2>
+      <div className="template-row">
+        {templates.map((template) => (
+          <button
+            className="filter-pill"
+            disabled={disabled}
+            key={template.component_name}
+            onClick={() => {
+              setValue('component_name', template.component_name)
+              setValue('condition', 'default_condition' in template ? template.default_condition : template.condition)
+              setValue('note', 'default_note' in template ? (template.default_note ?? '') : ('note' in template ? template.note : ''))
+            }}
+            type="button"
+          >
+            {template.component_name}
+          </button>
+        ))}
+      </div>
       {existingItems.length > 0 ? (
         <div className="mini-inspection-list">
           {existingItems.map((item) => (

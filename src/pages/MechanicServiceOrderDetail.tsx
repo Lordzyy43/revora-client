@@ -9,8 +9,10 @@ import { LoadingBlock } from '../components/LoadingBlock'
 import { MotionPage } from '../components/MotionPage'
 import { ServiceTimeline } from '../components/ServiceTimeline'
 import { StatusBadge } from '../components/StatusBadge'
+import { useInspectionTemplates } from '../hooks/useInspectionTemplates'
 import {
   useMechanicServiceOrder,
+  useCreateMechanicAttachment,
   useSyncMechanicInspectionItems,
   useUpdateMechanicNotes,
   useUpdateMechanicStatus,
@@ -28,6 +30,20 @@ const mechanicInspectionSchema = z.object({
   condition: z.enum(['good', 'attention', 'critical']),
   note: z.string().optional(),
 })
+
+const mechanicAttachmentSchema = z.object({
+  type: z.string().min(1, 'Type is required'),
+  url: z.string().url('Valid URL is required'),
+  caption: z.string().optional(),
+})
+
+const fallbackInspectionTemplates = [
+  { component_name: 'Engine Oil', condition: 'attention' as const, note: 'Check level, color, and leak signs.' },
+  { component_name: 'Brake System', condition: 'attention' as const, note: 'Inspect pads, fluid, and braking response.' },
+  { component_name: 'Battery', condition: 'good' as const, note: 'Check voltage and terminal condition.' },
+  { component_name: 'Tires', condition: 'attention' as const, note: 'Inspect tread depth and pressure.' },
+  { component_name: 'AC System', condition: 'good' as const, note: 'Check cooling performance and cabin airflow.' },
+]
 
 export function MechanicServiceOrderDetail() {
   const { serviceOrderId } = useParams()
@@ -90,9 +106,67 @@ export function MechanicServiceOrderDetail() {
           <section className="content-card">
             <MechanicNotesForm orderId={serviceOrderId} notes={order.notes ?? {}} />
           </section>
+
+          <section className="page-grid">
+            <div className="content-card span-7">
+              <h2>Evidence Attachments</h2>
+              {!order.attachments?.length ? <AsyncState message="Add an evidence URL for inspection proof." title="No evidence yet" /> : null}
+              <div className="attachment-grid">
+                {order.attachments?.map((attachment) => (
+                  <a className="attachment-card" href={attachment.url} key={attachment.id} target="_blank" rel="noreferrer">
+                    <img alt="" src={attachment.url} />
+                    <strong>{attachment.caption ?? attachment.type}</strong>
+                    <small>{attachment.uploaded_by?.name ?? 'Workshop'}</small>
+                  </a>
+                ))}
+              </div>
+            </div>
+            <div className="content-card span-5">
+              <MechanicAttachmentForm orderId={serviceOrderId} />
+            </div>
+          </section>
         </>
       ) : null}
     </MotionPage>
+  )
+}
+
+function MechanicAttachmentForm({ orderId }: { orderId: string }) {
+  const attachmentMutation = useCreateMechanicAttachment(orderId)
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+    reset,
+  } = useForm({
+    resolver: zodResolver(mechanicAttachmentSchema),
+    defaultValues: {
+      type: 'inspection_photo',
+      url: '',
+      caption: '',
+    },
+  })
+
+  return (
+    <form
+      className="form-stack"
+      onSubmit={handleSubmit((values) =>
+        attachmentMutation.mutate(values, {
+          onSuccess: () => reset({ type: 'inspection_photo', url: '', caption: '' }),
+        }),
+      )}
+    >
+      <h2>Add Evidence URL</h2>
+      <label>Type<input {...register('type')} />{errors.type ? <small className="field-error">{errors.type.message}</small> : null}</label>
+      <label>URL<input {...register('url')} />{errors.url ? <small className="field-error">{errors.url.message}</small> : null}</label>
+      <label>Caption<input {...register('caption')} /></label>
+      <button className="button button-primary" disabled={attachmentMutation.isPending} type="submit">
+        <Plus size={16} />
+        Add Evidence
+      </button>
+      {attachmentMutation.isSuccess ? <p className="form-success">Evidence attached.</p> : null}
+      {attachmentMutation.isError ? <p className="form-error">Evidence could not be attached.</p> : null}
+    </form>
   )
 }
 
@@ -155,11 +229,14 @@ function MechanicInspectionForm({
   orderId: string
 }) {
   const syncMutation = useSyncMechanicInspectionItems(orderId)
+  const templatesQuery = useInspectionTemplates()
+  const templates = templatesQuery.data?.length ? templatesQuery.data : fallbackInspectionTemplates
   const {
     formState: { errors },
     handleSubmit,
     register,
     reset,
+    setValue,
   } = useForm({
     resolver: zodResolver(mechanicInspectionSchema),
     defaultValues: {
@@ -194,6 +271,22 @@ function MechanicInspectionForm({
       )}
     >
       <h2>Inspection</h2>
+      <div className="template-row">
+        {templates.map((template) => (
+          <button
+            className="filter-pill"
+            key={template.component_name}
+            onClick={() => {
+              setValue('component_name', template.component_name)
+              setValue('condition', 'default_condition' in template ? template.default_condition : template.condition)
+              setValue('note', 'default_note' in template ? (template.default_note ?? '') : ('note' in template ? template.note : ''))
+            }}
+            type="button"
+          >
+            {template.component_name}
+          </button>
+        ))}
+      </div>
       {existingItems.length > 0 ? (
         <div className="mini-inspection-list">
           {existingItems.map((item) => (

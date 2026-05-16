@@ -51,6 +51,7 @@ export function OwnerDashboard() {
   const deleteStaffMutation = useDeleteOwnerStaff()
   const [editingStaff, setEditingStaff] = useState<AuthUser | null>(null)
   const [showStaffForm, setShowStaffForm] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'operations' | 'customers' | 'team'>('overview')
 
   const dashboard = dashboardQuery.data
   const statsSource = dashboard?.business_stats ?? dashboard?.stats ?? {}
@@ -85,7 +86,27 @@ export function OwnerDashboard() {
         />
       ) : null}
 
-      <section className="page-grid">
+      <section className="content-card">
+        <div className="tabs">
+          {[
+            ['overview', 'Overview'],
+            ['operations', 'Operations'],
+            ['customers', 'Customers & Services'],
+            ['team', 'Team'],
+          ].map(([key, label]) => (
+            <button
+              className={`tab-button ${activeTab === key ? 'active' : ''}`}
+              key={key}
+              onClick={() => setActiveTab(key as typeof activeTab)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {activeTab === 'overview' ? <section className="page-grid">
         <div className="content-card span-8">
           <div className="section-heading">
             <div>
@@ -126,9 +147,9 @@ export function OwnerDashboard() {
             </div>
           ))}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="page-grid">
+      {activeTab === 'operations' ? <section className="page-grid">
         <div className="content-card span-4">
           <h2>Recent Bookings</h2>
           {bookingsQuery.isLoading ? <LoadingBlock rows={4} /> : null}
@@ -145,6 +166,23 @@ export function OwnerDashboard() {
           ))}
         </div>
 
+        <div className="content-card span-8">
+          <h2>Service Orders</h2>
+          {serviceOrders.slice(0, 8).map((order) => (
+            <div className="list-row" key={order.id}>
+              <StatusBadge>{toServiceStatus(order.status)}</StatusBadge>
+              <div>
+                <strong>{order.booking_code ?? `SO-${order.id}`}</strong>
+                <p>
+                  {order.customer?.name ?? 'Customer'} | {order.vehicle?.brand} {order.vehicle?.model}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section> : null}
+
+      {activeTab === 'customers' ? <section className="page-grid">
         <div className="content-card span-4">
           <h2>Customers & Services</h2>
           <div className="metric-list">
@@ -163,6 +201,36 @@ export function OwnerDashboard() {
           </div>
         </div>
 
+        <div className="content-card span-4">
+          <h2>Customer Overview</h2>
+          {customers.slice(0, 8).map((customer) => (
+            <div className="list-row" key={customer.id}>
+              <StatusBadge tone="info">Customer</StatusBadge>
+              <div>
+                <strong>{customer.name}</strong>
+                <p>{customer.email ?? customer.phone ?? '-'}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="content-card span-4">
+          <h2>Service Catalog</h2>
+          {services.slice(0, 8).map((service) => (
+            <div className="list-row" key={service.id}>
+              <StatusBadge tone={service.is_active === false ? 'warning' : 'success'}>
+                {service.is_active === false ? 'Inactive' : 'Active'}
+              </StatusBadge>
+              <div>
+                <strong>{service.name}</strong>
+                <p>{formatCurrency(service.base_price)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section> : null}
+
+      {activeTab === 'team' ? <section className="page-grid">
         <div className="content-card span-4">
           <div className="section-heading">
             <h2>Staff</h2>
@@ -218,7 +286,19 @@ export function OwnerDashboard() {
             />
           ) : null}
         </div>
-      </section>
+        <div className="content-card span-8">
+          <h2>Team Load</h2>
+          {staff.map((member) => (
+            <div className="workload-row" key={member.id}>
+              <span>{member.name}</span>
+              <div className="progress-track">
+                <span style={{ width: `${Math.min(100, Number(member.assigned_service_orders_count ?? 0) * 16)}%` }} />
+              </div>
+              <strong>{Number(member.assigned_service_orders_count ?? 0)} jobs</strong>
+            </div>
+          ))}
+        </div>
+      </section> : null}
     </MotionPage>
   )
 }

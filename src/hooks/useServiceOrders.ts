@@ -3,12 +3,17 @@ import {
   addAdminEstimateItem,
   approveEstimate,
   assignAdminMechanic,
+  createAdminServiceOrderAttachment,
+  createMechanicServiceOrderAttachment,
+  fetchAdminServiceOrderKanban,
   fetchAdminServiceOrder,
   fetchAdminServiceOrders,
   fetchCustomerServiceOrders,
   fetchCustomerTracking,
   fetchMechanicServiceOrder,
   fetchMechanicServiceOrders,
+  fetchServiceOrderAttachments,
+  fetchServiceOrderInvoice,
   rejectEstimate,
   syncAdminInspectionItems,
   syncMechanicInspectionItems,
@@ -24,6 +29,13 @@ export function useAdminServiceOrders() {
   return useQuery({
     queryKey: ['admin', 'service-orders'],
     queryFn: () => fetchAdminServiceOrders(),
+  })
+}
+
+export function useAdminServiceOrderKanban() {
+  return useQuery({
+    queryKey: ['admin', 'service-orders', 'kanban'],
+    queryFn: fetchAdminServiceOrderKanban,
   })
 }
 
@@ -62,6 +74,22 @@ export function useCustomerTracking(serviceOrderId: number | string) {
     queryKey: ['customer', 'service-order-tracking', serviceOrderId],
     queryFn: () => fetchCustomerTracking(serviceOrderId),
     enabled: Boolean(serviceOrderId),
+  })
+}
+
+export function useServiceOrderAttachments(serviceOrderId: number | string) {
+  return useQuery({
+    enabled: Boolean(serviceOrderId),
+    queryKey: ['service-orders', serviceOrderId, 'attachments'],
+    queryFn: () => fetchServiceOrderAttachments(serviceOrderId),
+  })
+}
+
+export function useServiceOrderInvoice(serviceOrderId: number | string) {
+  return useQuery({
+    enabled: Boolean(serviceOrderId),
+    queryKey: ['service-orders', serviceOrderId, 'invoice'],
+    queryFn: () => fetchServiceOrderInvoice(serviceOrderId),
   })
 }
 
@@ -170,6 +198,32 @@ export function useAddAdminEstimateItem(serviceOrderId: number | string) {
     mutationFn: (payload: Omit<ApiEstimateItem, 'id' | 'subtotal'>) =>
       addAdminEstimateItem(serviceOrderId, payload),
     onSuccess: () => invalidateServiceOrder(queryClient, 'admin', serviceOrderId),
+  })
+}
+
+export function useCreateAdminAttachment(serviceOrderId: number | string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { type: string; url: string; caption?: string }) =>
+      createAdminServiceOrderAttachment(serviceOrderId, payload),
+    onSuccess: () => {
+      invalidateServiceOrder(queryClient, 'admin', serviceOrderId)
+      void queryClient.invalidateQueries({ queryKey: ['service-orders', serviceOrderId, 'attachments'] })
+    },
+  })
+}
+
+export function useCreateMechanicAttachment(serviceOrderId: number | string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { type: string; url: string; caption?: string }) =>
+      createMechanicServiceOrderAttachment(serviceOrderId, payload),
+    onSuccess: () => {
+      invalidateServiceOrder(queryClient, 'mechanic', serviceOrderId)
+      void queryClient.invalidateQueries({ queryKey: ['service-orders', serviceOrderId, 'attachments'] })
+    },
   })
 }
 

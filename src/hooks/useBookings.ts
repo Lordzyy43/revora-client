@@ -28,11 +28,11 @@ export function useBooking(bookingId: number | string) {
   })
 }
 
-export function useBookingSlots(date: string) {
+export function useBookingSlots(date: string, serviceIds?: number[]) {
   return useQuery({
     enabled: Boolean(date),
-    queryKey: ['booking-slots', date],
-    queryFn: () => fetchBookingSlots(date),
+    queryKey: ['booking-slots', date, serviceIds],
+    queryFn: () => fetchBookingSlots(date, serviceIds),
   })
 }
 

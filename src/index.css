@@ -289,7 +289,7 @@
   }
 
   .topbar-actions {
-    @apply flex items-center gap-2.5;
+    @apply relative flex items-center gap-2.5;
   }
 
   .search-field {
@@ -460,8 +460,24 @@
     @apply mt-4.5 justify-between;
   }
 
+  .onboarding-panel {
+    @apply flex items-center justify-between gap-5 border-teal bg-teal-soft/45;
+  }
+
   .button-row {
     @apply flex flex-wrap items-center gap-2.5;
+  }
+
+  .tabs {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .tab-button {
+    @apply rounded-revora-sm border border-line bg-surface px-3.5 py-2 text-sm font-bold text-muted;
+  }
+
+  .tab-button.active {
+    @apply border-teal bg-teal-soft text-teal;
   }
 
   .button-row.vertical {
@@ -532,8 +548,41 @@
     @apply inline-grid size-9.5 place-items-center rounded-revora-sm border border-line bg-surface text-muted;
   }
 
+  .notification-button {
+    @apply relative;
+  }
+
+  .notification-button span {
+    @apply absolute -top-2 -right-2 grid size-5 place-items-center rounded-full bg-bad text-[11px] font-bold text-white;
+  }
+
+  .notification-panel {
+    @apply absolute top-12 right-36 z-20 grid w-[360px] gap-2 rounded-revora border border-line bg-surface p-4 shadow-revora;
+  }
+
+  .notification-item {
+    @apply grid gap-1 rounded-revora-sm border border-line p-3;
+  }
+
+  .notification-item.unread {
+    @apply border-teal bg-teal-soft/40;
+  }
+
+  .attachment-grid {
+    @apply mt-4 grid grid-cols-2 gap-3;
+  }
+
+  .attachment-card {
+    @apply grid gap-2 rounded-revora-sm border border-line bg-surface p-3;
+  }
+
+  .attachment-card img {
+    @apply h-36 w-full rounded-revora-sm object-cover;
+  }
+
   .filter-row,
-  .badge-cloud {
+  .badge-cloud,
+  .template-row {
     @apply mb-4.5 flex flex-wrap gap-2;
   }
 
@@ -551,6 +600,28 @@
 
   .split-workspace {
     @apply grid grid-cols-[minmax(0,1fr)_360px] items-start gap-6;
+  }
+
+  .kanban-board {
+    @apply grid grid-cols-6 gap-3 overflow-x-auto;
+  }
+
+  .kanban-column {
+    @apply grid min-w-[190px] content-start gap-3 rounded-revora-sm border border-line bg-slate-50 p-3;
+  }
+
+  .kanban-card {
+    @apply grid gap-1 rounded-revora-sm border border-line bg-surface p-3 transition;
+  }
+
+  .kanban-card:hover {
+    @apply border-teal shadow-revora;
+  }
+
+  .kanban-card span,
+  .kanban-card small,
+  .muted-text {
+    @apply text-sm text-muted;
   }
 
   .detail-panel {
@@ -609,6 +680,10 @@
 
   .checklist {
     @apply grid gap-2.5;
+  }
+
+  .compact-checklist {
+    @apply mt-4;
   }
 
   .check-row {
@@ -756,6 +831,112 @@
   .route-loader {
     @apply grid min-h-60 place-items-center text-sm font-bold text-muted;
   }
+
+  .public-page {
+    @apply min-h-svh bg-background;
+  }
+
+  .public-nav {
+    @apply mx-auto flex max-w-7xl items-center justify-between gap-5 px-8 py-5;
+  }
+
+  .public-nav nav {
+    @apply flex items-center gap-4 text-sm font-bold text-muted;
+  }
+
+  .public-hero {
+    @apply relative mx-auto grid min-h-[620px] max-w-7xl overflow-hidden rounded-revora border border-line bg-navy text-white;
+  }
+
+  .public-hero img {
+    @apply absolute inset-0 size-full object-cover opacity-55;
+  }
+
+  .public-hero::after {
+    @apply absolute inset-0 content-[''];
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.35));
+  }
+
+  .public-hero-copy {
+    @apply relative z-1 grid max-w-2xl content-center gap-5 p-10;
+  }
+
+  .public-hero-copy h1,
+  .public-section-hero h1,
+  .public-service-detail h1 {
+    @apply text-[44px] font-extrabold leading-[54px];
+  }
+
+  .public-hero-copy p,
+  .public-section-hero p,
+  .public-service-detail p {
+    @apply max-w-2xl text-base leading-7;
+  }
+
+  .public-hero-copy h1,
+  .public-hero-copy p {
+    @apply text-white;
+  }
+
+  .public-section {
+    @apply mx-auto max-w-7xl px-8 py-12;
+  }
+
+  .public-section-hero {
+    @apply grid gap-3 py-16;
+  }
+
+  .public-feature-grid,
+  .public-card-grid {
+    @apply grid grid-cols-4 gap-4;
+  }
+
+  .public-info-grid {
+    @apply grid grid-cols-2 gap-4;
+  }
+
+  .public-feature-grid article,
+  .service-card {
+    @apply grid gap-3 rounded-revora border border-line bg-surface p-5;
+  }
+
+  .public-feature-grid svg {
+    @apply text-teal;
+  }
+
+  .service-card {
+    @apply min-h-[210px] content-between transition;
+  }
+
+  .service-card img,
+  .service-detail-image {
+    @apply h-40 w-full rounded-revora-sm object-cover;
+  }
+
+  .service-card:hover {
+    @apply border-teal shadow-revora;
+  }
+
+  .service-card span,
+  .service-card small {
+    @apply w-fit text-sm font-bold text-teal;
+  }
+
+  .catalog-toolbar {
+    @apply mb-6 flex flex-wrap items-center justify-between gap-4;
+  }
+
+  .no-margin {
+    @apply mb-0;
+  }
+
+  .public-service-detail {
+    @apply mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_minmax(260px,360px)_380px] items-start gap-8 px-8 py-16;
+  }
+
+  .public-service-detail > div:first-child {
+    @apply grid gap-5;
+  }
 }
 
 @layer utilities {
@@ -817,17 +998,40 @@
   .workspace-grid,
   .login-assurance-grid,
   .stat-grid,
+  .public-feature-grid,
+  .public-card-grid,
+  .public-info-grid,
+  .public-service-detail,
   .booking-form-grid,
   .service-selector,
   .slot-grid,
-  .action-grid {
+  .action-grid,
+  .kanban-board {
     @apply grid-cols-1;
   }
 
   main,
   .topbar,
+  .public-nav,
+  .public-section,
+  .public-service-detail,
   .login-panel,
   .workspace-panel {
     @apply p-5;
+  }
+
+  .public-nav,
+  .public-nav nav {
+    @apply flex-col items-stretch;
+  }
+
+  .public-hero {
+    @apply min-h-[560px] rounded-none border-x-0;
+  }
+
+  .public-hero-copy h1,
+  .public-section-hero h1,
+  .public-service-detail h1 {
+    @apply text-[34px] leading-[42px];
   }
 }

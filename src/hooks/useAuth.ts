@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getApiMessage } from '../lib/api'
 import { login, logout, registerCustomer, type LoginPayload, type RegisterPayload } from '../services/auth'
 import { useAuthStore } from '../stores/authStore'
@@ -7,6 +7,7 @@ import { resolveRole, resolveUserRole } from '../stores/authStore'
 
 export function useLogin() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const setSession = useAuthStore((state) => state.setSession)
 
@@ -26,8 +27,10 @@ export function useLogin() {
         resolveUserRole(session.user) ??
         useAuthStore.getState().role ??
         'customer'
+      const redirect = searchParams.get('redirect')
+
       void queryClient.invalidateQueries()
-      navigate(`/${role}`)
+      navigate(redirect && redirect.startsWith('/') ? redirect : `/${role}`)
     },
   })
 }
@@ -42,13 +45,14 @@ export function useLogout() {
     onSettled: () => {
       clearSession()
       queryClient.clear()
-      navigate('/')
+      navigate('/login')
     },
   })
 }
 
 export function useRegisterCustomer() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const setSession = useAuthStore((state) => state.setSession)
 
@@ -62,7 +66,9 @@ export function useRegisterCustomer() {
         role: session.role ?? session.roles?.[0] ?? 'customer',
       })
       void queryClient.invalidateQueries()
-      navigate('/customer')
+      const redirect = searchParams.get('redirect')
+
+      navigate(redirect && redirect.startsWith('/') ? redirect : '/customer')
     },
   })
 }

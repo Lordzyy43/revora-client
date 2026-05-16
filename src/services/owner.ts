@@ -4,6 +4,11 @@ import type { ServiceCatalogItem } from './catalog'
 import type { ApiServiceOrder } from './serviceOrders'
 import type { AuthUser } from '../stores/authStore'
 
+export type OwnerStaff = AuthUser & {
+  assigned_service_orders_count?: number
+  created_at?: string
+}
+
 export type OwnerDashboardResponse = {
   stats?: Record<string, string | number | null>
   business_stats?: Record<string, string | number | null>
@@ -88,7 +93,7 @@ export async function fetchOwnerServices() {
 }
 
 export async function fetchOwnerStaff() {
-  const response = await api.get<ApiResponse<ApiPaginator<AuthUser> | AuthUser[]>>('/owner/staff')
+  const response = await api.get<ApiResponse<ApiPaginator<OwnerStaff> | OwnerStaff[]>>('/owner/staff')
 
   return Array.isArray(response.data.data) ? response.data.data : response.data.data.data
 }

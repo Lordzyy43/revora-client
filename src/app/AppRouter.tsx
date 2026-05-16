@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { RoleLayout } from '../layouts/RoleLayout'
 
@@ -51,13 +51,25 @@ const NotFoundPage = lazy(() =>
 const OwnerDashboard = lazy(() =>
   import('../pages/OwnerDashboard').then((module) => ({ default: module.OwnerDashboard })),
 )
+const PublicHome = lazy(() =>
+  import('../pages/PublicHome').then((module) => ({ default: module.PublicHome })),
+)
+const PublicServiceDetail = lazy(() =>
+  import('../pages/PublicServiceDetail').then((module) => ({ default: module.PublicServiceDetail })),
+)
+const PublicServices = lazy(() =>
+  import('../pages/PublicServices').then((module) => ({ default: module.PublicServices })),
+)
 const ServiceTrackingPage = lazy(() =>
   import('../pages/ServiceTrackingPage').then((module) => ({ default: module.ServiceTrackingPage })),
 )
 
 const router = createBrowserRouter([
-  { path: '/', element: withSuspense(<LoginPage />) },
+  { path: '/', element: withSuspense(<PublicHome />) },
+  { path: '/login', element: withSuspense(<LoginPage />) },
   { path: '/register', element: withSuspense(<RegisterPage />) },
+  { path: '/services', element: withSuspense(<PublicServices />) },
+  { path: '/services/:serviceId', element: withSuspense(<PublicServiceDetail />) },
   {
     element: <ProtectedRoute allowedRoles={['customer']} />,
     children: [
@@ -148,7 +160,6 @@ const router = createBrowserRouter([
     ),
     children: [{ index: true, element: withSuspense(<ComponentLibrary />) }],
   },
-  { path: '/login', element: <Navigate to="/" replace /> },
   { path: '*', element: withSuspense(<NotFoundPage />) },
 ])
 
